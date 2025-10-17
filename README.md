@@ -43,3 +43,7 @@ Cherukupalli Sai Sriram Karteek
 Email – 23f2000484@ds.study.iitm.ac.in
 
 GitHub – Karteek05
+
+### Demo
+Repo: [demo-task-auto](https://github.com/Karteek05/demo-task-auto)  
+Live: [https://Karteek05.github.io/demo-task-auto/](https://Karteek05.github.io/demo-task-auto/)
