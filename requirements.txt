@@ -1,2 +1,10 @@
 fastapi
-uvicorn
+uvicorn[standard]
+requests
+python-multipart
+jinja2
+pydantic
+gitpython
+httpx
+packaging
+opeenai
