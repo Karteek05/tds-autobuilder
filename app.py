@@ -80,18 +80,19 @@ def parse_data_uri_to_bytes(data_uri: str) -> bytes:
 # ============== AIPIPE LLM CALL ==============
 def call_aipipe(system_prompt: str, user_prompt: str, max_tokens: int = 2000) -> str:
     """
-    Calls AIPipe LLM endpoint using GPT-4o-mini.
+    Calls AIPipe LLM endpoint using GPT-4o-mini with enforced JSON output.
     """
     headers = {
         "Authorization": f"Bearer {AIPIPE_TOKEN}",
         "Content-Type": "application/json",
     }
-    
+
     payload = {
         "model": AIPIPE_MODEL,
+        "response_format": {"type": "json_object"},  # ✅ Forces valid JSON output
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
+            {"role": "user", "content": user_prompt}
         ],
         "max_tokens": max_tokens,
         "temperature": 0.2
@@ -102,10 +103,9 @@ def call_aipipe(system_prompt: str, user_prompt: str, max_tokens: int = 2000) ->
         if r.status_code == 503:
             time.sleep(6)
             r = requests.post(AIPIPE_API_URL, headers=headers, json=payload, timeout=120)
-
         if r.status_code >= 300:
             raise RuntimeError(f"AIPipe error {r.status_code}: {r.text}")
-
+        
         data = r.json()
         return data["choices"][0]["message"]["content"]
     except Exception as e:
