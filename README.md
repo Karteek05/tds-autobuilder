@@ -7,7 +7,7 @@ verifies a secret, and responds with confirmation.
 ---
 
 ## 🚀 API Endpoint
-**URL:** `https://stringent-unlarcenously-raiden.ngrok-free.dev/api-endpoint`  
+**URL:** `https://tds-autobuilder-1.onrender.com/api-endpoint`  
 **Method:** `POST`  
 **Content-Type:** `application/json`
 
