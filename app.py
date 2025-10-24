@@ -89,50 +89,39 @@ def call_aipipe(system_prompt: str, user_prompt: str, max_tokens: int = 2000) ->
 
     payload = {
         "model": AIPIPE_MODEL,
-        "response_format": {"type": "json_object"},  # ✅ Forces valid JSON output
+        "response_format": {"type": "json_object"},  # ✅ Force valid JSON
         "messages": [
-            {"role": "system", "content": system_prompt},
+            {
+                "role": "system",
+                "content": (
+                    system_prompt
+                    + "\nYou MUST reply with ONLY valid JSON matching the required schema."
+                    + " Do not include explanations, markdown, or code fences."
+                )
+            },
             {"role": "user", "content": user_prompt}
         ],
         "max_tokens": max_tokens,
-        "temperature": 0.2
+        "temperature": 0.1,
+        "top_p": 0.9
     }
 
     try:
         r = requests.post(AIPIPE_API_URL, headers=headers, json=payload, timeout=120)
-        if r.status_code == 503:
-            time.sleep(6)
-            r = requests.post(AIPIPE_API_URL, headers=headers, json=payload, timeout=120)
         if r.status_code >= 300:
             raise RuntimeError(f"AIPipe error {r.status_code}: {r.text}")
-        
+
         data = r.json()
-        return data["choices"][0]["message"]["content"]
+        raw_response = data["choices"][0]["message"]["content"]
+
+        # ✅ Extra safety: strip any markdown or garbage
+        if raw_response.strip().startswith("```"):
+            raw_response = raw_response.strip().strip("`").replace("json", "", 1).strip()
+
+        return raw_response
     except Exception as e:
         raise RuntimeError(f"AIPipe LLM call failed: {e}")
 
-
-def extract_json_block(text: str) -> str:
-    """
-    Extract JSON from possible markdown or natural language response.
-    """
-    fence = re.search(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL)
-    if fence:
-        return fence.group(1)
-
-    # Balanced braces extraction
-    depth = 0
-    start = None
-    for i, ch in enumerate(text):
-        if ch == "{":
-            if depth == 0:
-                start = i
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0 and start is not None:
-                return text[start:i+1]
-    return text  # fallback to full text
 # ============== LICENSE TEXT ==============
 MIT_LICENSE_TEXT = """MIT License
 
@@ -185,10 +174,30 @@ CHECKS to improve:
 """
 
 ROUND2_IMPROVEMENTS = """
-This is Round 2. Regenerate an improved version of the entire site based on evaluator feedback.
-Focus on accessibility, navigation consistency, metadata, responsiveness, and professional presentation.
-Do not reference previous content; generate a fresh improved complete version.
+ROUND 2 TASK:
+Regenerate a fully improved version of the entire static website.
+
+⚠ STRICT REQUIREMENTS:
+- OUTPUT MUST BE VALID JSON ONLY.
+- DO NOT include any explanations, markdown fences, comments, or additional keys.
+- Return an object with exactly one key: "files", which is a list.
+
+Example of valid structure:
+{
+  "files": [
+    { "name": "index.html", "content": "<!doctype html>...full html..." },
+    { "name": "README.md", "content": "# Project Documentation" },
+    { "name": "LICENSE", "content": "MIT License ... full text ..." }
+  ]
+}
+
+Required improvements:
+- Add accessibility tags (alt, aria, labels)
+- Add consistent navigation across pages
+- Add footer with contact details
+- Use clean responsive layout
 """
+
 
 # ============== MANIFEST GENERATION ==============
 def make_index_from_manifest(manifest: Dict[str, str]) -> str:
@@ -222,10 +231,9 @@ def build_manifest_via_llm(brief: str, round_no: int, checks: List[str]) -> Dict
         user_prompt += "\n" + ROUND2_IMPROVEMENTS
 
     raw = call_aipipe(SYSTEM_PLAN, user_prompt)
-    json_text = extract_json_block(raw)
 
     try:
-        data = json.loads(json_text)
+        data = json.loads(raw)
         assert isinstance(data, dict) and "files" in data
     except Exception:
         # fallback
